@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>排班管理系統</title>
+    <title>湖口中山/竹北成功班表管理系統</title>
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
@@ -493,11 +493,11 @@
 
         const CalendarExportModal = ({ isOpen, onClose, userData, monthStr, scheduleDates, rawSchedule, shiftsConfig, calendarRecord }) => {
             const [generating, setGenerating] = useState(false);
-            const [showEvents, setShowEvents] = useState(true);
+            const [showEvents, setShowEvents] = useState(false); // <--- 改為預設 false
 
             useEffect(() => {
                 if (isOpen) {
-                    setShowEvents(true);
+                    setShowEvents(false); // <--- 改為預設 false
                 }
             }, [isOpen]);
 
