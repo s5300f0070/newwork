@@ -180,8 +180,9 @@
             );
         };
 
-        const AdminDashboardModal = ({ isOpen, onClose, storesConfig, employeesConfig, shiftsConfig, colorsConfig, refreshConfig }) => {
+        const AdminDashboardModal = ({ isOpen, onClose, storesConfig, employeesConfig, shiftsConfig, colorsConfig, refreshConfig, leaveRequests, onApprove, onReject }) => {
             const [activeTab, setActiveTab] = useState("shifts");
+            const pendingCount = (leaveRequests || []).filter(r => r.status === "pending").length;
             const [localStores, setLocalStores] = useState([]);
             const [localEmployees, setLocalEmployees] = useState([]);
             const [localShifts, setLocalShifts] = useState([]);
@@ -262,6 +263,10 @@
                             <button onClick={() => setActiveTab('shifts')} className={`flex-1 py-3 font-bold text-sm transition-colors ${activeTab === 'shifts' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:bg-slate-200'}`}>班別設定</button>
                             <button onClick={() => setActiveTab('stores')} className={`flex-1 py-3 font-bold text-sm transition-colors ${activeTab === 'stores' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:bg-slate-200'}`}>分店資料管理</button>
                             <button onClick={() => setActiveTab('employees')} className={`flex-1 py-3 font-bold text-sm transition-colors ${activeTab === 'employees' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:bg-slate-200'}`}>員工資料管理</button>
+                            <button onClick={() => setActiveTab('requests')} className={`flex-1 py-3 font-bold text-sm transition-colors relative ${activeTab === 'requests' ? 'bg-white text-amber-600 border-b-2 border-amber-500' : 'text-slate-500 hover:bg-slate-200'}`}>
+                                休假審核
+                                {pendingCount > 0 && <span className="absolute top-1.5 right-2 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{pendingCount}</span>}
+                            </button>
                         </div>
 
                         <div className="flex-1 overflow-auto p-4 bg-slate-50">
@@ -325,6 +330,56 @@
                                         </table>
                                     </div>
                                     <button onClick={() => handleSave('stores')} disabled={isSaving} className="mt-4 w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors">{isSaving ? '儲存中...' : '儲存分店設定'}</button>
+                                </div>
+                            )}
+
+                            {activeTab === 'requests' && (
+                                <div>
+                                    <h4 className="font-bold text-slate-700 mb-3">休假申請審核</h4>
+                                    {(leaveRequests || []).length === 0 ? (
+                                        <div className="text-center py-10 text-slate-400">
+                                            <i className="fa-regular fa-calendar-check text-3xl mb-2 block opacity-50"></i>
+                                            <p className="text-sm">目前沒有任何休假申請</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {(leaveRequests || []).sort((a, b) => (b.submittedAt || "").localeCompare(a.submittedAt || "")).map(req => (
+                                                <div key={req.id} className={`bg-white border rounded-lg p-4 shadow-sm ${req.status === 'pending' ? 'border-amber-300' : req.status === 'approved' ? 'border-emerald-300' : 'border-red-200'}`}>
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <span className="font-bold text-slate-800">{req.name}</span>
+                                                                <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{req.store}</span>
+                                                                {req.status === 'pending' && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-bold">待審核</span>}
+                                                                {req.status === 'approved' && <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded font-bold">已核准</span>}
+                                                                {req.status === 'rejected' && <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded font-bold">已駁回</span>}
+                                                            </div>
+                                                            <p className="text-sm text-slate-600 mt-1">申請日期：<span className="font-bold text-slate-800">{req.date}</span>　月份：{req.month}</p>
+                                                            <p className="text-sm text-slate-500 mt-0.5">原因：{req.reason}</p>
+                                                            {req.submittedAt && <p className="text-xs text-slate-400 mt-1">送出時間：{req.submittedAt}</p>}
+                                                            {req.reviewedBy && <p className="text-xs text-slate-400">審核者：{req.reviewedBy}</p>}
+                                                        </div>
+                                                        {req.status === 'pending' && (
+                                                            <div className="flex gap-2 shrink-0">
+                                                                <button
+                                                                    onClick={() => onApprove(req.id, req.name, req.date, req.month)}
+                                                                    className="px-3 py-1.5 bg-emerald-500 text-white text-xs font-bold rounded-lg hover:bg-emerald-600 transition-colors"
+                                                                >
+                                                                    <i className="fa-solid fa-check mr-1"></i>核准
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => onReject(req.id, req.name, req.date)}
+                                                                    className="px-3 py-1.5 bg-red-500 text-white text-xs font-bold rounded-lg hover:bg-red-600 transition-colors"
+                                                                >
+                                                                    <i className="fa-solid fa-xmark mr-1"></i>駁回
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -432,6 +487,57 @@
                             <div className="flex gap-3 mt-6">
                                 <button onClick={onClose} className="flex-1 px-4 py-2 border border-slate-300 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-colors">取消</button>
                                 <button onClick={handleSubmit} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold shadow-md hover:bg-blue-700 transition-colors">確定畫休</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const LeaveRequestModal = ({ isOpen, onClose, onSubmit, name, date, currentCount, limit }) => {
+            const [reason, setReason] = useState("");
+            const [error, setError] = useState("");
+            const inputRef = useRef(null);
+
+            useEffect(() => {
+                if (isOpen) { setReason(""); setError(""); setTimeout(() => inputRef.current?.focus(), 100); }
+            }, [isOpen]);
+
+            if (!isOpen) return null;
+
+            const handleSubmit = () => {
+                if (!reason.trim()) { setError("請填寫申請原因"); return; }
+                onSubmit(reason);
+            };
+
+            return (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center px-4 modal-overlay">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose}></div>
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden modal-content relative z-10">
+                        <div className="bg-amber-600 text-white px-4 py-3 flex justify-between items-center">
+                            <h3 className="font-bold text-lg"><i className="fa-solid fa-paper-plane mr-2"></i>送出休假申請</h3>
+                            <button onClick={onClose} className="text-amber-200 hover:text-white"><i className="fa-solid fa-xmark text-xl"></i></button>
+                        </div>
+                        <div className="p-5">
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                                <p className="text-amber-800 text-sm font-medium"><i className="fa-solid fa-circle-info mr-1"></i>本月已使用 <strong>{currentCount}</strong> / {limit} 天自選休</p>
+                                <p className="text-amber-700 text-xs mt-1">已超出自選休上限，需由店長審核通過後才會顯示休假。</p>
+                            </div>
+                            <p className="text-slate-600 mb-4 text-sm">申請日期：<span className="text-slate-900 font-bold">{date}</span></p>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">申請原因 <span className="text-red-500">*</span></label>
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                value={reason}
+                                onChange={(e) => { setReason(e.target.value); setError(""); }}
+                                placeholder="請輸入申請原因 (必填)"
+                                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-all ${error ? 'border-red-500 focus:ring-red-200' : 'border-slate-300 focus:border-amber-500 focus:ring-amber-100'}`}
+                                onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+                            />
+                            {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+                            <div className="flex gap-3 mt-6">
+                                <button onClick={onClose} className="flex-1 px-4 py-2 border border-slate-300 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-colors">取消</button>
+                                <button onClick={handleSubmit} className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold shadow-md hover:bg-amber-700 transition-colors"><i className="fa-solid fa-paper-plane mr-1.5"></i>送出申請</button>
                             </div>
                         </div>
                     </div>
@@ -767,6 +873,8 @@
 
             const [modalConfig, setModalConfig] = useState({ isOpen: false, name: "", date: "", isMandatory: false });
             const [calEventModal, setCalEventModal] = useState({ isOpen: false, date: "", currentText: "" });
+            const [leaveRequests, setLeaveRequests] = useState([]);
+            const [leaveRequestModal, setLeaveRequestModal] = useState({ isOpen: false, name: "", date: "", currentCount: 0, limit: 4 });
 
             // 編輯班別模式專用狀態
             const [selectedCells, setSelectedCells] = useState([]);
@@ -807,10 +915,11 @@
                         else if (resMonths.currentMonth && resMonths.months.includes(resMonths.currentMonth)) setCurrentMonth(resMonths.currentMonth);
                         else if (resMonths.months.length > 0) setCurrentMonth(resMonths.months[resMonths.months.length - 1]);
                     }
-                } catch(e) { 
-                    setStatusMsg("系統初始化連線錯誤，請確認後端網址"); 
+                } catch(e) {
+                    setStatusMsg("系統初始化連線錯誤，請確認後端網址");
                 }
                 setInitLoading(false);
+                fetchLeaveRequests();
             };
 
             const fetchSchedule = async (month) => {
@@ -828,6 +937,85 @@
                     setStatusMsg("連線錯誤 (取得班表失敗)");
                 } finally {
                     setScheduleLoading(false);
+                }
+            };
+
+            const fetchLeaveRequests = async () => {
+                try {
+                    const res = await fetch(`${APPS_SCRIPT_URL}?action=getLeaveRequests&_t=${new Date().getTime()}`);
+                    const data = await res.json();
+                    if (data.status === "success") setLeaveRequests(data.requests || []);
+                } catch (e) { /* silent */ }
+            };
+
+            const submitLeaveRequest = async (reason) => {
+                const { name, date, currentCount, limit } = leaveRequestModal;
+                setLeaveRequestModal(prev => ({ ...prev, isOpen: false }));
+                setStatusMsg("送出申請中...");
+                try {
+                    const month = currentMonth;
+                    const userRecord = scheduleData.schedule.find(u => u.name === name);
+                    const store = userRecord ? (userRecord.store || "") : "";
+                    const res = await fetch(APPS_SCRIPT_URL, {
+                        method: "POST",
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify({ action: "submitLeaveRequest", name, store, month, date, reason, submittedAt: new Date().toLocaleString('zh-TW') })
+                    });
+                    const result = await res.json();
+                    if (result.status === "success") {
+                        setStatusMsg("✅ 申請已送出，等待店長審核");
+                        fetchLeaveRequests();
+                    } else {
+                        setStatusMsg("❌ 送出失敗：" + (result.message || "請稍後再試"));
+                    }
+                } catch (e) {
+                    setStatusMsg("❌ 連線失敗，無法送出申請");
+                }
+            };
+
+            const approveLeaveRequest = async (requestId, name, date, month) => {
+                try {
+                    const res = await fetch(APPS_SCRIPT_URL, {
+                        method: "POST",
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify({ action: "approveLeaveRequest", requestId, name, date, month, reviewedBy: currentUser })
+                    });
+                    const result = await res.json();
+                    if (result.status === "success") {
+                        setLeaveRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: "approved", reviewedBy: currentUser } : r));
+                        if (month === currentMonth) {
+                            setScheduleData(prev => ({
+                                ...prev,
+                                schedule: prev.schedule.map(u => u.name === name ? {
+                                    ...u, shifts: { ...u.shifts, [date]: { type: "休", note: "店長核准" } }
+                                } : u)
+                            }));
+                        }
+                        setStatusMsg(`✅ 已核准 ${name} ${date} 的休假申請`);
+                    } else {
+                        alert("核准失敗：" + (result.message || "請稍後再試"));
+                    }
+                } catch (e) {
+                    alert("連線失敗");
+                }
+            };
+
+            const rejectLeaveRequest = async (requestId, name, date) => {
+                try {
+                    const res = await fetch(APPS_SCRIPT_URL, {
+                        method: "POST",
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify({ action: "rejectLeaveRequest", requestId, name, date, reviewedBy: currentUser })
+                    });
+                    const result = await res.json();
+                    if (result.status === "success") {
+                        setLeaveRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: "rejected", reviewedBy: currentUser } : r));
+                        setStatusMsg(`已駁回 ${name} ${date} 的休假申請`);
+                    } else {
+                        alert("駁回失敗：" + (result.message || "請稍後再試"));
+                    }
+                } catch (e) {
+                    alert("連線失敗");
                 }
             };
 
@@ -902,8 +1090,13 @@
                 }
 
                 const currentRestCount = userRecord ? Object.values(userRecord.shifts).filter(v => v && v.type === "休").length : 0;
-                const isMandatory = (isAdmin || isPartTime) ? false : (currentRestCount >= minMandLeave);
-                
+
+                if (!isAdmin && !isPartTime && currentRestCount >= minMandLeave) {
+                    setLeaveRequestModal({ isOpen: true, name, date, currentCount: currentRestCount, limit: minMandLeave });
+                    return;
+                }
+
+                const isMandatory = false;
                 setModalConfig({ isOpen: true, name, date, isMandatory, minLimit: minMandLeave });
             };
 
@@ -1137,7 +1330,7 @@
                         tempUser={tempAdminUser}
                     />
 
-                    <AdminDashboardModal 
+                    <AdminDashboardModal
                         isOpen={showAdminDashboard}
                         onClose={() => setShowAdminDashboard(false)}
                         storesConfig={storesConfig}
@@ -1145,15 +1338,28 @@
                         shiftsConfig={shiftsConfig}
                         colorsConfig={colorsConfig}
                         refreshConfig={initApp}
+                        leaveRequests={leaveRequests}
+                        onApprove={approveLeaveRequest}
+                        onReject={rejectLeaveRequest}
                     />
                     
-                    <ReasonModal 
+                    <ReasonModal
                         isOpen={modalConfig.isOpen}
                         onClose={() => setModalConfig({...modalConfig, isOpen: false})}
                         onConfirm={(reason) => executeShiftUpdate(modalConfig.name, modalConfig.date, "休", reason)}
                         date={modalConfig.date}
                         isMandatory={modalConfig.isMandatory}
                         minLimit={modalConfig.minLimit}
+                    />
+
+                    <LeaveRequestModal
+                        isOpen={leaveRequestModal.isOpen}
+                        onClose={() => setLeaveRequestModal(prev => ({ ...prev, isOpen: false }))}
+                        onSubmit={submitLeaveRequest}
+                        name={leaveRequestModal.name}
+                        date={leaveRequestModal.date}
+                        currentCount={leaveRequestModal.currentCount}
+                        limit={leaveRequestModal.limit}
                     />
 
                     <CalendarEventModal
